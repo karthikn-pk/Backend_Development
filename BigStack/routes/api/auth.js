@@ -41,7 +41,7 @@ router.post("/register", (req, res) => {
             newPerson.password = hash;
             newPerson
               .save()
-              .then((peron) => res.json(person))
+              .then((person) => res.json(person))
               .catch((err) => console.log(err));
           });
         });
@@ -49,5 +49,62 @@ router.post("/register", (req, res) => {
     })
     .catch((err) => console.log(err));
 });
+
+//@type   POST
+//@route  -  /api/auth/login
+//@desc   - route for login user
+//@access  - PUBLIC
+
+router.post("/login", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  Person.findOne({ email })
+    .then((person) => {
+      if (!person) {
+        return res.status(400).json({ emailerror: "user not found" });
+      }
+      bcrypt.compare(password, person.password).then((isCorrect) => {
+        if (isCorrect) {
+          // res.json({ success: "user is loggedin successfully" });
+          //use payload and create token for user
+          const payload = {
+            id: person.id,
+            name: person.name,
+            email: person.email,
+          };
+          jsonwt.sign(
+            payload,
+            key.secret,
+            { expiresIn: "1hr" },
+            (err, token) => {
+              res.json({ success: true, token: "Bearer " + token });
+            }
+          );
+        } else {
+          res.status(400).json({ password: "password incorrect" });
+        }
+      });
+    })
+    .catch((err) => console.log(err));
+});
+
+//@type   GET
+//@route  -  /api/auth/profile
+//@desc   - route for user profile
+//@access  - PRIVATE
+
+router.get(
+  "/profile",
+  passport.authenticate("jwt", { session: false }),
+  (req, res) => {
+    res.json({
+      id: req.user.id,
+      name: req.user.id,
+      email: req.user.email,
+      profilepic: req.user.profilepic,
+    });
+  }
+);
 
 module.exports = router;
